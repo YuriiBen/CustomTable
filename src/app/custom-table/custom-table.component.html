@@ -1,0 +1,39 @@
+<table>
+  <!-- headers -->
+  <tr class="header">
+    <th *ngFor="let header of columnDefinitions">
+      <!-- [style.width.px]="header.width" -->
+      {{ header.headerName }}
+    </th>
+  </tr>
+
+  <!-- data -->
+  <tr
+    class="rowData"
+    *ngFor="let data of rowData"
+    (click)="onRowClick(data)"
+    [ngClass]="{
+      selectedRow: data.isSelected
+    }"
+  >
+    <th
+      *ngFor="let column of columnDefinitions"
+      (click)="onCellClicked(column, input.value)"
+      [ngClass]="{
+        selectedCell: data.isSelected && column.isSelected
+      }"
+    >
+      <!-- <span>
+        {{ data[column.propertyKey] }}
+      </span> -->
+      <input
+        #input
+        type="text"
+        [disabled]="!column.editable"
+        [value]="data[column.propertyKey]"
+        [style.width.px]="column.width"
+        (change)="onCellValueChanged(column.propertyKey, input.value)"
+      />
+    </th>
+  </tr>
+</table>
