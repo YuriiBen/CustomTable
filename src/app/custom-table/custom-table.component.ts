@@ -6,6 +6,8 @@ import { Component, EventEmitter, OnInit, Output } from '@angular/core';
 import { TypeName } from '../shared/enums/TypeName';
 import { CellValueChanged } from '../shared/models/CellValueChanged';
 import { CellClicked } from '../shared/models/CellClicked';
+import { ColumnState } from '../shared/models/ColumnState';
+import { SortBy } from '../shared/enums/SortBy';
 
 @Component({
   selector: 'custom-table',
@@ -21,6 +23,7 @@ export class CustomTableComponent implements OnInit {
     {
       propertyKey: 'price',
       type: TypeName.Number,
+      sortable: true,
     },
     {
       headerName: 'Weight KG',
@@ -35,12 +38,12 @@ export class CustomTableComponent implements OnInit {
     {
       sku: 'KA777',
       weight: 700,
-      price: 45.2,
+      price: 450.2,
     },
     {
       sku: 'KA1044',
       weight: 10,
-      price: 54,
+      price: 5,
     },
     {
       sku: 'KA490',
@@ -53,6 +56,8 @@ export class CustomTableComponent implements OnInit {
       price: 540,
     },
   ];
+  baseRowData: any[];
+  columnStateDictionary: { [propertyKey: string]: ColumnState } = {};
 
   @Output() cellValueChanged: EventEmitter<CellValueChanged> =
     new EventEmitter();
@@ -65,13 +70,15 @@ export class CustomTableComponent implements OnInit {
   constructor() {}
 
   ngOnInit(): void {
+    this.baseRowData = [...this.rowData];
     this.colDefConfig();
   }
 
   colDefConfig() {
-    this.columnDefinitions.forEach((colDef: ColumnDefinition) =>
-      SetDefaultValuesIfNotPresent(colDef)
-    );
+    this.columnDefinitions.forEach((colDef: ColumnDefinition) => {
+      SetDefaultValuesIfNotPresent(colDef);
+      this.UpdateColumnState(colDef, { sortBy: SortBy.None });
+    });
   }
   //#endregion
 
@@ -104,5 +111,55 @@ export class CustomTableComponent implements OnInit {
       value: newValue,
     });
   }
+
+  sortByHeader(header: ColumnDefinition, currentSortOption: SortBy) {
+    if (!header.sortable) {
+      return;
+    }
+
+    if (currentSortOption === SortBy.None) {
+      currentSortOption = SortBy.Asc;
+    } else if (currentSortOption === SortBy.Asc) {
+      currentSortOption = SortBy.Desc;
+    } else if (currentSortOption === SortBy.Desc) {
+      currentSortOption = SortBy.None;
+    }
+
+    this.UpdateColumnState(header, {
+      sortBy: currentSortOption,
+    });
+
+    if (currentSortOption === SortBy.None) {
+      this.rowData = [...this.baseRowData];
+      return;
+    }
+
+    if (currentSortOption === SortBy.Asc) {
+      if (header.type === TypeName.Number) {
+        this.rowData.sort((a, b) =>
+          +a[header.propertyKey] < +b[header.propertyKey] ? 1 : -1
+        );
+      } else {
+        this.rowData.sort((a, b) =>
+          a[header.propertyKey] < b[header.propertyKey] ? 1 : -1
+        );
+      }
+    } else {
+      if (header.type === TypeName.Number) {
+        this.rowData.sort((a, b) =>
+          +a[header.propertyKey] > +b[header.propertyKey] ? 1 : -1
+        );
+      } else {
+        this.rowData.sort((a, b) =>
+          a[header.propertyKey] > b[header.propertyKey] ? 1 : -1
+        );
+      }
+    }
+  }
+
   //#endregion
+
+  UpdateColumnState(column: ColumnDefinition, columnState: ColumnState) {
+    this.columnStateDictionary[column.propertyKey] = columnState;
+  }
 }

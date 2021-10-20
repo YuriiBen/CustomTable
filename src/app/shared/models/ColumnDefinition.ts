@@ -5,16 +5,19 @@ export class ColumnDefinition {
   headerName?: string;
   propertyKey: string;
   editable?: boolean;
+  sortable?: boolean;
   width?: number; //px
   type?: TypeName; //for correct sorting
-
-
   isSelected?: boolean;
 }
 
 export function SetDefaultValuesIfNotPresent(colDef: ColumnDefinition) {
   if (!colDef.headerName) {
     colDef.headerName = capitalizeFirstLetter(colDef.propertyKey);
+  }
+
+  if (!colDef.sortable) {
+    colDef.sortable = false;
   }
 
   if (!colDef.editable) {

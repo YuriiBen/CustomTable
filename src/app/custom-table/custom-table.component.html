@@ -1,9 +1,18 @@
 <table>
   <!-- headers -->
   <tr class="header">
-    <th *ngFor="let header of columnDefinitions">
-      <!-- [style.width.px]="header.width" -->
+    <th
+      *ngFor="let header of columnDefinitions"
+      [ngStyle]="{
+        cursor: header.sortable ? 'pointer' : 'default'
+      }"
+      (click)="
+        sortByHeader(header, columnStateDictionary[header.propertyKey].sortBy)
+      "
+    >
       {{ header.headerName }}
+      <span>{{ columnStateDictionary[header.propertyKey].sortBy }}</span>
+      <!-- <mat-icon>arrow_right_alt</mat-icon> -->
     </th>
   </tr>
 
@@ -23,9 +32,6 @@
         selectedCell: data.isSelected && column.isSelected
       }"
     >
-      <!-- <span>
-        {{ data[column.propertyKey] }}
-      </span> -->
       <input
         #input
         type="text"
