@@ -1,3 +1,4 @@
+import { PinnedOptions } from '../enums/PinnedOptions';
 import { TypeName } from '../enums/TypeName';
 import { capitalizeFirstLetter } from '../helpers';
 
@@ -9,6 +10,8 @@ export class ColumnDefinition {
   width?: number; //px
   type?: TypeName; //for correct sorting
   isSelected?: boolean;
+  hidden?: boolean;
+  pinnedOption?: PinnedOptions;
 }
 
 export function SetDefaultValuesIfNotPresent(colDef: ColumnDefinition) {
@@ -30,5 +33,13 @@ export function SetDefaultValuesIfNotPresent(colDef: ColumnDefinition) {
 
   if (!colDef.type) {
     colDef.type = TypeName.String;
+  }
+
+  if (!colDef.hidden) {
+    colDef.hidden = false;
+  }
+
+  if (!colDef.pinnedOption) {
+    colDef.pinnedOption = PinnedOptions.None;
   }
 }

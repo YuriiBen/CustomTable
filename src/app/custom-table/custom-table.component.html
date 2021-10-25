@@ -1,45 +1,91 @@
-<table>
-  <!-- headers -->
-  <tr class="header">
-    <th
-      *ngFor="let header of columnDefinitions"
-      [ngStyle]="{
-        cursor: header.sortable ? 'pointer' : 'default'
-      }"
-      (click)="
-        sortByHeader(header, columnStateDictionary[header.propertyKey].sortBy)
-      "
-    >
-      {{ header.headerName }}
-      <span>{{ columnStateDictionary[header.propertyKey].sortBy }}</span>
-      <!-- <mat-icon>arrow_right_alt</mat-icon> -->
-    </th>
-  </tr>
-
-  <!-- data -->
-  <tr
-    class="rowData"
-    *ngFor="let data of rowData"
-    (click)="onRowClick(data)"
-    [ngClass]="{
-      selectedRow: data.isSelected
+<div class="holder">
+  <div
+    class="filtering-options"
+    *ngIf="filterPopUpCoordinates"
+    [style.top.px]="filterPopUpCoordinates.y"
+    [style.left.px]="filterPopUpCoordinates.x"
+  >
+    <div class="filter-item">Contains</div>
+    <input #input type="text" class="filter-item" />
+    <div class="filter-button" (click) = "filterByColumn(input.value)">Filter</div>
+  </div>
+  <div
+    class="table-part {{ grouppedColDefs.pinnedTo }}"
+    *ngFor="let grouppedColDefs of grouppedColumnDefs"
+    [ngStyle]="{
+      display: grouppedColDefs.columnDefinitions.length > 0 ? 'block' : 'none'
     }"
   >
-    <th
-      *ngFor="let column of columnDefinitions"
-      (click)="onCellClicked(column, input.value)"
-      [ngClass]="{
-        selectedCell: data.isSelected && column.isSelected
-      }"
-    >
-      <input
-        #input
-        type="text"
-        [disabled]="!column.editable"
-        [value]="data[column.propertyKey]"
-        [style.width.px]="column.width"
-        (change)="onCellValueChanged(column.propertyKey, input.value)"
-      />
-    </th>
-  </tr>
-</table>
+    <table *ngIf="grouppedColDefs.columnDefinitions.length > 0">
+      <!-- headers -->
+      <tr class="header">
+        <th
+          *ngFor="let header of grouppedColDefs.columnDefinitions"
+          [ngStyle]="{
+            cursor: header.sortable ? 'pointer' : 'default'
+          }"
+          (click)="
+            sortByHeader(
+              header,
+              columnStateDictionary[header.propertyKey].sortBy
+            )
+          "
+          [style.minWidth.px]="header.width"
+        >
+          {{ header.headerName }}
+          <mat-icon
+            *ngIf="header.sortable"
+            [ngStyle]="
+              columnStateDictionary[header.propertyKey].sortBy == 0
+                ? { display: 'none' }
+                : columnStateDictionary[header.propertyKey].sortBy == 1
+                ? { transform: 'rotate(270deg)' }
+                : { transform: 'rotate(90deg)' }
+            "
+            >arrow_right_alt</mat-icon
+          >
+          <!-- <span class="material-icons-outlined"> filter_alt </span> -->
+          <mat-icon
+            class="filter"
+            (click)="onFilterClick(header, $event)"
+            >filter_alt</mat-icon
+          >
+
+          <div
+            *ngIf="defaultOptions.resizable"
+            class="draggable-border"
+            (mousedown)="start($event, header)"
+            (document:click)="end($event)"
+          ></div>
+        </th>
+      </tr>
+
+      <!-- data -->
+      <tr
+        class="rowData"
+        *ngFor="let data of rowData"
+        (click)="onRowClick(data)"
+        [ngClass]="{
+          selectedRow: data.isSelected
+        }"
+      >
+        <th
+          *ngFor="let column of grouppedColDefs.columnDefinitions"
+          (click)="onCellClicked(column, input.value)"
+          [ngClass]="{
+            selectedCell: data.isSelected && column.isSelected
+          }"
+        >
+          <input
+            #input
+            type="text"
+            [disabled]="!column.editable"
+            [value]="data[column.propertyKey]"
+            [style.width.px]="column.width"
+            (change)="onCellValueChanged(column.propertyKey, input.value)"
+          />
+        </th>
+      </tr>
+    </table>
+  </div>
+</div>
