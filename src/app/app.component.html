@@ -1,3 +1,13 @@
 <div>
-  <custom-table></custom-table>
+  <custom-table
+    [columnDefinitions]="columnDefinitions"
+    [rowData]="rowData"
+    [defaultOptions]="defaultOptions"
+    [tableApi]="tableApi"
+    (tableReady)="onTableReady($event)"
+    (cellValueChanged)="onCellValueChanged($event)"
+    (cellClicked)="onCellClicked($event)"
+    (rowResized)="onRowResized($event)"
+    (columnSorted)="onColumnSorted($event)"
+  ></custom-table>
 </div>

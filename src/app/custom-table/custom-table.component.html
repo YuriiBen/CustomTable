@@ -1,13 +1,29 @@
 <div class="holder">
   <div
+    #filteringContainer
     class="filtering-options"
     *ngIf="filterPopUpCoordinates"
     [style.top.px]="filterPopUpCoordinates.y"
     [style.left.px]="filterPopUpCoordinates.x"
+    title="parent"
   >
     <div class="filter-item">Contains</div>
-    <input #input type="text" class="filter-item" />
-    <div class="filter-button" (click) = "filterByColumn(input.value)">Filter</div>
+    <input
+      #input
+      type="text"
+      class="filter-item"
+      [value]="currentColDef.filteringDetails?.contains ?? ''"
+      (keyup.enter)="filterByColumn(input.value)"
+    />
+    <div class="filter-buttons">
+      <button (click)="filterByColumn(input.value)">Filter</button
+      ><button
+        [disabled]="!currentColDef.filteringDetails"
+        (click)="clearFilterOnHeader()"
+      >
+        Clear
+      </button>
+    </div>
   </div>
   <div
     class="table-part {{ grouppedColDefs.pinnedTo }}"
@@ -48,6 +64,12 @@
           <mat-icon
             class="filter"
             (click)="onFilterClick(header, $event)"
+            [ngStyle]="{
+              color:
+                header.filteringDetails && header.filteringDetails.isFiltered
+                  ? '#6385ff'
+                  : '#9f9d9e'
+            }"
             >filter_alt</mat-icon
           >
 

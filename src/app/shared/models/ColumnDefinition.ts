@@ -12,6 +12,11 @@ export class ColumnDefinition {
   isSelected?: boolean;
   hidden?: boolean;
   pinnedOption?: PinnedOptions;
+  filteringDetails?: FilteringDetails;
+}
+class FilteringDetails{
+  isFiltered: boolean;
+  contains: string;
 }
 
 export function SetDefaultValuesIfNotPresent(colDef: ColumnDefinition) {

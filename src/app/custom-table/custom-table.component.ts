@@ -1,13 +1,17 @@
-import { DefaultOptions } from './../shared/models/DefaultOptions';
 import {
+  ChangeDetectorRef,
   Component,
+  ElementRef,
   EventEmitter,
+  HostListener,
   Input,
   OnChanges,
   OnInit,
   Output,
   Renderer2,
+  ViewChild,
 } from '@angular/core';
+import { PinnedOptions } from '../shared/enums/PinnedOptions';
 import { SortBy } from '../shared/enums/SortBy';
 import { TypeName } from '../shared/enums/TypeName';
 import { CellClicked } from '../shared/models/CellClicked';
@@ -16,9 +20,12 @@ import {
   ColumnDefinition,
   SetDefaultValuesIfNotPresent,
 } from '../shared/models/ColumnDefinition';
+import { ColumnSorted } from '../shared/models/ColumnSorted';
 import { ColumnState } from '../shared/models/ColumnState';
 import { RowResized as RowResized } from '../shared/models/RowResized';
-import { PinnedOptions } from '../shared/enums/PinnedOptions';
+import { TableApi } from '../shared/models/TableApi';
+import { TableConfiged } from '../shared/models/TableConfiged';
+import { DefaultOptions } from './../shared/models/DefaultOptions';
 
 @Component({
   selector: 'custom-table',
@@ -27,39 +34,6 @@ import { PinnedOptions } from '../shared/enums/PinnedOptions';
 })
 export class CustomTableComponent implements OnInit, OnChanges {
   //#region props
-  columnDefinitions: ColumnDefinition[] = [
-    {
-      propertyKey: 'sku',
-      pinnedOption: PinnedOptions.Left,
-    },
-    {
-      propertyKey: 'customer',
-      sortable: true,
-      width: 125,
-      pinnedOption: PinnedOptions.Left,
-    },
-    {
-      propertyKey: 'price',
-      type: TypeName.Number,
-      sortable: true,
-    },
-    {
-      headerName: 'Weight KG',
-      propertyKey: 'weight',
-      type: TypeName.Number,
-      width: 100,
-      editable: true,
-    },
-    {
-      headerName: 'Hidden data',
-      propertyKey: 'hidden',
-      sortable: true,
-      width: 125,
-      hidden: false,
-      pinnedOption: PinnedOptions.Right,
-    },
-  ];
-
   grouppedColumnDefs: {
     pinnedTo: PinnedOptions;
     columnDefinitions: ColumnDefinition[];
@@ -68,60 +42,34 @@ export class CustomTableComponent implements OnInit, OnChanges {
     { pinnedTo: PinnedOptions.None, columnDefinitions: [] },
     { pinnedTo: PinnedOptions.Right, columnDefinitions: [] },
   ];
-
-  rowData: any[] = [
-    {
-      sku: 'KA777',
-      weight: 700,
-      price: 450.2,
-      customer: 'Julie Robert',
-      hidden: 'pa$$word1',
-    },
-    {
-      sku: 'KA1044',
-      weight: 10,
-      price: 5,
-      customer: 'Bob Lee Swagger',
-      hidden: 'pa$$word2',
-    },
-    {
-      sku: 'KA490',
-      weight: 20,
-      price: 100,
-      customer: 'Oleksa Solotov',
-      hidden: 'pa$$word3',
-    },
-    {
-      sku: 'KA144',
-      weight: 12,
-      price: 540,
-      customer: 'Nadine Memphis',
-      hidden: 'pa$$word4',
-    },
-  ];
   baseRowData: any[];
-
   columnStateDictionary: { [propertyKey: string]: ColumnState } = {};
-  defaultOptions: DefaultOptions = {
-    resizable: false,
-  };
-
+  @Input() defaultOptions: DefaultOptions;
   @Input() quickSearch: string = '';
-
+  @Input() columnDefinitions: ColumnDefinition[];
+  @Input() rowData: any[];
+  @Input() tableApi: TableApi;
+  @Output() tableReady: EventEmitter<TableConfiged> = new EventEmitter();
   @Output() cellValueChanged: EventEmitter<CellValueChanged> =
     new EventEmitter();
   @Output() cellClicked: EventEmitter<CellClicked> = new EventEmitter();
-
   @Output() rowResized: EventEmitter<RowResized> = new EventEmitter();
-  //#endregion
+  @Output() columnSorted: EventEmitter<ColumnSorted> = new EventEmitter();
 
+  @ViewChild('filteringContainer') filteringContainer: ElementRef;
+  //#endregion
   //#region config
-  constructor(private renderer2: Renderer2) {}
+  constructor(private renderer2: Renderer2, private cdr: ChangeDetectorRef) {}
 
   ngOnInit(): void {
     this.listenToResizeEvent();
+    this.listenToClickFilterPopup();
     this.baseRowData = [...this.rowData];
     this.colDefConfig();
+    this.tableReady.emit({
+      rowData: this.rowData,
+      columnDefinitions: this.columnDefinitions,
+    });
   }
 
   ngOnChanges() {
@@ -148,15 +96,10 @@ export class CustomTableComponent implements OnInit, OnChanges {
           }
         });
 
-        // this.grouppedColumnDefs.push({
-        //   pinnedTo: colDef.pinnedOption,
-        //   columnDefinitions: colDef,
-        // });
         this.grouppedColumnDefs
           .find((x) => x.pinnedTo === colDef.pinnedOption)
           ?.columnDefinitions.push(colDef);
       });
-    console.log(this.grouppedColumnDefs);
   }
   //#endregion
 
@@ -218,6 +161,11 @@ export class CustomTableComponent implements OnInit, OnChanges {
 
     if (currentSortOption === SortBy.None) {
       this.rowData = [...this.baseRowData];
+      this.columnSorted.next({
+        columnDefinition: this.currentColDef,
+        columnState: this.columnStateDictionary[header.propertyKey],
+        sortOption: SortBy[currentSortOption],
+      });
       return;
     }
 
@@ -242,6 +190,12 @@ export class CustomTableComponent implements OnInit, OnChanges {
         );
       }
     }
+
+    this.columnSorted.next({
+      columnDefinition: this.currentColDef,
+      columnState: this.columnStateDictionary[header.propertyKey],
+      sortOption: SortBy[currentSortOption],
+    });
   }
 
   //#endregion
@@ -314,7 +268,8 @@ export class CustomTableComponent implements OnInit, OnChanges {
     return paths(obj);
   }
 
-  filterPopUpCoordinates: { x: number; y: number };
+  filterPopUpCoordinates: any; //{ x: number; y: number };
+
   onFilterClick(header: ColumnDefinition, event: any) {
     event.stopPropagation();
     this.filterPopUpCoordinates = {
@@ -330,9 +285,57 @@ export class CustomTableComponent implements OnInit, OnChanges {
       return;
     }
 
-    this.rowData = this.rowData.filter((x) =>
-      x[this.currentColDef.propertyKey].toString().includes(value)
+    this.rowData = this.baseRowData.filter((x) =>
+      x[this.currentColDef.propertyKey]
+        .toString()
+        .toLowerCase()
+        .includes(value.toLowerCase())
     );
+
+    this.filterPopUpCoordinates = null;
+    this.columnDefinitions.forEach(
+      (colDef: ColumnDefinition) => (colDef.filteringDetails = undefined)
+    );
+    this.currentColDef.filteringDetails = {
+      isFiltered: true,
+      contains: value,
+    };
+  }
+
+  clearFilterOnHeader() {
+    if (!this.currentColDef.filteringDetails) {
+      return;
+    }
+    this.filterPopUpCoordinates = null;
+    this.currentColDef.filteringDetails = undefined;
+    this.rowData = [...this.baseRowData];
+  }
+
+  listenToClickFilterPopup() {
+    this.renderer2.listen('window', 'click', (e: Event) => {
+      if (!this.filteringContainer) {
+        return;
+      }
+      let success: boolean = false;
+      if (e.target == this.filteringContainer.nativeElement) {
+        success = true;
+      } else {
+        for (
+          let index = 0;
+          index < this.filteringContainer.nativeElement.children.length;
+          index++
+        ) {
+          const element = this.filteringContainer.nativeElement.children[index];
+          if (e.target == element) {
+            success = true;
+          }
+        }
+      }
+      if (!success) {
+        this.filterPopUpCoordinates = null;
+        this.currentColDef.filteringDetails = undefined;
+      }
+    });
   }
 
   //#region Resizing
@@ -349,6 +352,7 @@ export class CustomTableComponent implements OnInit, OnChanges {
       if (this.counter === 0) {
         return;
       }
+
       this.currentColDef.width! +=
         event.clientX - this.startClientX - this.previousDifference;
       this.previousDifference = event.clientX - this.startClientX;
@@ -382,4 +386,84 @@ export class CustomTableComponent implements OnInit, OnChanges {
     this.previousDifference = 0;
   }
   //#endregion
+
+  @HostListener('window:keyup', ['$event'])
+  keyEvent(event: KeyboardEvent) {
+    enum DirectionEnum {
+      Vertical,
+      Horizontal,
+    }
+
+    enum KeyboardEnum {
+      Left = 'ArrowLeft',
+      Right = 'ArrowRight',
+      Up = 'ArrowUp',
+      Down = 'ArrowDown',
+    }
+
+    function increment(value: number) {
+      return ++value;
+    }
+    function decrement(value: number) {
+      return --value;
+    }
+
+    const possibleKeys = [
+      {
+        key: KeyboardEnum.Left,
+        action: decrement,
+        direction: DirectionEnum.Horizontal,
+      },
+      {
+        key: KeyboardEnum.Right,
+        action: increment,
+        direction: DirectionEnum.Horizontal,
+      },
+      {
+        key: KeyboardEnum.Up,
+        action: decrement,
+        direction: DirectionEnum.Vertical,
+      },
+      {
+        key: KeyboardEnum.Down,
+        action: increment,
+        direction: DirectionEnum.Vertical,
+      },
+    ];
+
+    let currentAction = possibleKeys.find(
+      (x) => x.key.toString() === event.key
+    );
+    if (!currentAction) {
+      return;
+    }
+    let visibleColumns = this.columnDefinitions.filter((x) => !x.hidden);
+
+    let selectedColumnIndex = visibleColumns.findIndex((x) => x.isSelected);
+    let selectedRowIndex = this.rowData.findIndex((x) => x.isSelected);
+
+    if (currentAction.direction === DirectionEnum.Vertical) {
+      if (
+        (selectedRowIndex === this.rowData.length - 1 &&
+          currentAction.key === KeyboardEnum.Down) ||
+        (selectedRowIndex === 0 && currentAction.key === KeyboardEnum.Up)
+      ) {
+        return;
+      }
+
+      this.rowData[selectedRowIndex].isSelected = false;
+      this.rowData[currentAction.action(selectedRowIndex)].isSelected = true;
+    } else {
+      if (
+        (selectedColumnIndex === visibleColumns.length - 1 &&
+          currentAction.key === KeyboardEnum.Right) ||
+        (selectedColumnIndex === 0 && currentAction.key === KeyboardEnum.Left)
+      ) {
+        return;
+      }
+      visibleColumns[selectedColumnIndex].isSelected = false;
+      visibleColumns[currentAction.action(selectedColumnIndex)].isSelected =
+        true;
+    }
+  }
 }
